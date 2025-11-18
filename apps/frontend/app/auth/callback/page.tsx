@@ -15,7 +15,10 @@ export default function AuthCallbackPage() {
 
     if (accessToken && refreshToken) {
       // Fetch user data
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      if (apiUrl && !apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+        apiUrl = `https://${apiUrl}`
+      }
       fetch(`${apiUrl}/auth/me`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,

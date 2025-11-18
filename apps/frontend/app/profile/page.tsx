@@ -273,7 +273,7 @@ export default function ProfilePage() {
                 onClick={() => setIsEditing(true)}
                 className="w-full py-2 border-2 border-dashed border-neutral-light-grey rounded-xl text-neutral-dark-grey hover:border-primary-purple hover:text-primary-purple transition-all"
               >
-                Click "Edit Profile" to manage photos
+                Click &quot;Edit Profile&quot; to manage photos
               </button>
             )}
           </div>

@@ -43,7 +43,11 @@ export default function ChatPage() {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
-    const newSocket = io(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/chat`, {
+    let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    if (apiUrl && !apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+      apiUrl = `https://${apiUrl}`
+    }
+    const newSocket = io(`${apiUrl}/chat`, {
       auth: { token },
     })
 
