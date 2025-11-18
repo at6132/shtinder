@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+// Ensure API URL has protocol
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
+  API_URL = `https://${API_URL}`
+}
 
 export const api = axios.create({
   baseURL: API_URL,
