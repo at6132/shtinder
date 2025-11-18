@@ -18,7 +18,15 @@ import { PrismaModule } from '../prisma/prisma.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtRefreshStrategy,
+    // Conditionally provide GoogleStrategy only if credentials exist
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [GoogleStrategy]
+      : []),
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

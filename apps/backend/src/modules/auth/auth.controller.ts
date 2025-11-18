@@ -35,12 +35,14 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuth() {
     // Initiates Google OAuth flow
+    // Only works if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set
   }
 
   @Public()
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    // Only works if Google OAuth is configured
     const user = await this.authService.googleLogin(req.user);
     
     // Redirect to frontend with tokens
