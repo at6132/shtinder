@@ -131,6 +131,7 @@ export class AuthService {
         height: true,
         interests: true,
         isAdmin: true,
+        onboardingComplete: true,
         createdAt: true,
       },
     });
