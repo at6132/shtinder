@@ -31,11 +31,23 @@ export class UsersController {
 
   @Get('discover')
   async discover(@CurrentUser() user: any, @Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.usersService.discover(
-      user.id,
-      page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 10,
-    );
+    try {
+      console.log(`🔍 Discover request - User ID: ${user.id}, Page: ${page || 1}, Limit: ${limit || 50}`);
+      const result = await this.usersService.discover(
+        user.id,
+        page ? parseInt(page) : 1,
+        limit ? parseInt(limit) : 50,
+      );
+      console.log(`✅ Discover success - Found ${result?.length || 0} users`);
+      return result;
+    } catch (error) {
+      console.error('❌ Discover error:', {
+        userId: user?.id,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
   }
 
   @Get(':id')
@@ -64,6 +76,21 @@ export class UsersController {
     const result = await this.usersService.deletePhoto(user.id, photoId);
     // Optionally delete from S3
     return result;
+  }
+
+  @Post('photos/:photoId/set-main')
+  async setMainPhoto(@CurrentUser() user: any, @Param('photoId') photoId: string) {
+    return this.usersService.setMainPhoto(user.id, photoId);
+  }
+
+  @Post('complete-onboarding')
+  async completeOnboarding(
+    @CurrentUser() user: any,
+    @Body('bio') bio?: string,
+    @Body('height') height?: number,
+    @Body('preferences') preferences?: any,
+  ) {
+    return this.usersService.completeOnboardingForExistingUser(user.id, bio, height, preferences);
   }
 }
 

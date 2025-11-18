@@ -57,12 +57,18 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const updateData: any = {
+      ...dto,
+      updatedAt: new Date(),
+    };
+    
+    if (dto.preferences) {
+      updateData.preferences = dto.preferences as any;
+    }
+
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        ...dto,
-        updatedAt: new Date(),
-      },
+      data: updateData,
       include: {
         photos: {
           orderBy: { createdAt: 'asc' },
@@ -101,7 +107,12 @@ export class UsersService {
     return { success: true };
   }
 
-  async discover(userId: string, page: number = 1, limit: number = 10) {
+  async completeOnboardingForExistingUser(
+    userId: string,
+    bio?: string,
+    height?: number,
+    preferences?: any,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -110,117 +121,162 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Get all users that the current user has already swiped on
-    const swipedUserIds = await this.prisma.swipe.findMany({
-      where: { swiperId: userId },
-      select: { targetId: true },
-    });
+    const updatedPreferences = {
+      ...(user.preferences as any),
+      ...preferences,
+    };
 
-    const swipedIds = swipedUserIds.map((s) => s.targetId);
-
-    // Get all users that have blocked or been blocked by current user
-    const blocks = await this.prisma.block.findMany({
-      where: {
-        OR: [{ blockerId: userId }, { blockedId: userId }],
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        bio: bio !== undefined ? bio : user.bio,
+        height: height !== undefined ? height : user.height,
+        preferences: updatedPreferences,
+        onboardingComplete: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        age: true,
+        gender: true,
+        bio: true,
+        height: true,
+        interests: true,
+        isAdmin: true,
+        onboardingComplete: true,
+        createdAt: true,
       },
     });
 
-    const blockedIds = blocks.flatMap((b) =>
-      b.blockerId === userId ? [b.blockedId] : [b.blockerId],
-    );
+    return updatedUser;
+  }
 
-    // Get all users that have matched with current user
-    const matches = await this.prisma.match.findMany({
-      where: {
-        OR: [{ user1Id: userId }, { user2Id: userId }],
-        unmatched: false,
-      },
+  async setMainPhoto(userId: string, photoId: string) {
+    const photo = await this.prisma.photo.findUnique({
+      where: { id: photoId },
     });
 
-    const matchedIds = matches.flatMap((m) =>
-      m.user1Id === userId ? [m.user2Id] : [m.user1Id],
-    );
-
-    // Exclude current user, swiped users, blocked users, and matched users
-    const excludeIds = [userId, ...swipedIds, ...blockedIds, ...matchedIds];
-
-    // Build query with preferences
-    const preferences = user.preferences as any;
-    const genderFilter =
-      preferences?.gender === 'both'
-        ? {}
-        : preferences?.gender === 'male'
-        ? { gender: 'male' }
-        : preferences?.gender === 'female'
-        ? { gender: 'female' }
-        : {};
-
-    const ageRange = preferences?.ageRange || { min: 18, max: 99 };
-
-    // Get potential matches
-    let potentialMatches = await this.prisma.user.findMany({
-      where: {
-        id: { notIn: excludeIds },
-        ...genderFilter,
-        age: {
-          gte: ageRange.min,
-          lte: ageRange.max,
-        },
-      },
-      include: {
-        photos: {
-          orderBy: { createdAt: 'asc' },
-          take: 1,
-        },
-      },
-      take: limit * 3, // Get more to filter by distance
-      skip: (page - 1) * limit * 3,
-    });
-
-    // Filter by distance if user has location
-    if (user.latitude && user.longitude && preferences?.maxDistanceKm) {
-      potentialMatches = potentialMatches.filter((match) => {
-        if (!match.latitude || !match.longitude) return false;
-        const distance = this.calculateDistance(
-          user.latitude,
-          user.longitude,
-          match.latitude,
-          match.longitude,
-        );
-        return distance <= preferences.maxDistanceKm;
-      });
+    if (!photo || photo.userId !== userId) {
+      throw new NotFoundException('Photo not found');
     }
 
-    // Sort by interests priority if enabled
-    if (preferences?.interestsPriority && user.interests.length > 0) {
-      potentialMatches.sort((a, b) => {
-        const aCommon = a.interests.filter((i) => user.interests.includes(i)).length;
-        const bCommon = b.interests.filter((i) => user.interests.includes(i)).length;
-        return bCommon - aCommon;
-      });
+    // Get all user photos ordered by createdAt
+    const allPhotos = await this.prisma.photo.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // If it's already the first photo, return
+    if (allPhotos[0]?.id === photoId) {
+      return { success: true, message: 'Photo is already the main photo' };
     }
 
-    // Add distance to each match
-    const matchesWithDistance = potentialMatches.map((match) => {
-      let distance = null;
-      if (user.latitude && user.longitude && match.latitude && match.longitude) {
-        distance = this.calculateDistance(
-          user.latitude,
-          user.longitude,
-          match.latitude,
-          match.longitude,
-        );
+    // Delete the photo and recreate it with the earliest timestamp
+    // This makes it the first photo (main photo)
+    const earliestPhoto = allPhotos[0];
+    const earliestDate = earliestPhoto ? earliestPhoto.createdAt : new Date(Date.now() - 1000000);
+
+    // Delete and recreate with earlier timestamp
+    await this.prisma.photo.delete({
+      where: { id: photoId },
+    });
+
+    await this.prisma.photo.create({
+      data: {
+        url: photo.url,
+        userId: photo.userId,
+        createdAt: new Date(earliestDate.getTime() - 1000), // 1 second before the earliest
+      },
+    });
+
+    return { success: true };
+  }
+
+  async discover(userId: string, page: number = 1, limit: number = 50) {
+    console.log(`🔍 [Discover] Starting discovery for user: ${userId}, page: ${page}, limit: ${limit}`);
+    
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        console.error(`❌ [Discover] User not found: ${userId}`);
+        throw new NotFoundException('User not found');
       }
 
-      const { password, ...matchWithoutPassword } = match;
-      return {
-        ...matchWithoutPassword,
-        distance: preferences?.showMyDistance ? Math.round(distance) : null,
-      };
-    });
+      console.log(`✅ [Discover] User found: ${user.email}, gender: ${user.gender}`);
+      
+      // Check if user has completed onboarding
+      if (!user.onboardingComplete) {
+        console.warn(`⚠️ [Discover] User ${userId} has not completed onboarding`);
+        return [];
+      }
 
-    // Return paginated results
-    return matchesWithDistance.slice(0, limit);
+      // Get all users that the current user has already swiped on
+      const swipedUserIds = await this.prisma.swipe.findMany({
+        where: { swiperId: userId },
+        select: { targetId: true },
+      });
+
+      const swipedIds = swipedUserIds.map((s) => s.targetId);
+
+      // Get all users that have blocked or been blocked by current user
+      const blocks = await this.prisma.block.findMany({
+        where: {
+          OR: [{ blockerId: userId }, { blockedId: userId }],
+        },
+      });
+
+      const blockedIds = blocks.flatMap((b) =>
+        b.blockerId === userId ? [b.blockedId] : [b.blockerId],
+      );
+
+      // Exclude current user, swiped users, and blocked users
+      // NOTE: NOT excluding matched users - allow unlimited swiping
+      const excludeIds = [userId, ...swipedIds, ...blockedIds];
+
+      // Simple logic: Guys see all girls, Girls see all guys
+      const oppositeGender = user.gender === 'male' ? 'female' : 'male';
+
+      console.log(`📊 [Discover] Showing ${oppositeGender} users, excluding ${excludeIds.length} users`);
+
+      // Get all users of opposite gender (unlimited, no age/preference filtering)
+      const potentialMatches = await this.prisma.user.findMany({
+        where: {
+          id: { notIn: excludeIds },
+          onboardingComplete: true,
+          gender: oppositeGender,
+        },
+        include: {
+          photos: {
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+        take: limit,
+        skip: (page - 1) * limit,
+        orderBy: { createdAt: 'desc' }, // Show newest first
+      });
+
+      console.log(`📊 [Discover] Found ${potentialMatches.length} potential matches`);
+
+      // Remove password and prepare results
+      const result = potentialMatches.map((match) => {
+        const { password, ...matchWithoutPassword } = match;
+        return matchWithoutPassword;
+      });
+
+      console.log(`✅ [Discover] Returning ${result.length} users`);
+      return result;
+    } catch (error) {
+      console.error(`❌ [Discover] Error in discover method:`, {
+        userId,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
   }
 
   private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

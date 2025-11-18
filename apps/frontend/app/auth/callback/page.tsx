@@ -25,6 +25,9 @@ export default function AuthCallbackPage() {
           setAuth(user, accessToken, refreshToken)
           if (user.isAdmin) {
             router.push('/admin')
+          } else if (!user.onboardingComplete) {
+            // Redirect to onboarding if not completed
+            router.push('/onboarding')
           } else {
             router.push('/swipe')
           }

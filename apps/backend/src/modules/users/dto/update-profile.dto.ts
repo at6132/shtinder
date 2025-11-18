@@ -1,14 +1,14 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsArray, IsNumber, IsObject, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, Max, IsArray, IsNumber, IsObject, ValidateNested, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class AgeRangeDto {
   @IsInt()
-  @Min(18)
+  @Min(14)
   @Max(99)
   min: number;
 
   @IsInt()
-  @Min(18)
+  @Min(14)
   @Max(99)
   max: number;
 }
@@ -32,16 +32,20 @@ class PreferencesDto {
   showMe?: 'male' | 'female' | 'both';
 
   @IsOptional()
-  @IsString()
+  @IsBoolean()
   interestsPriority?: boolean;
 
   @IsOptional()
-  @IsString()
+  @IsBoolean()
   showMyAge?: boolean;
 
   @IsOptional()
-  @IsString()
+  @IsBoolean()
   showMyDistance?: boolean;
+
+  @IsOptional()
+  @IsString()
+  lookingFor?: string;
 }
 
 export class UpdateProfileDto {
@@ -51,7 +55,7 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsInt()
-  @Min(18)
+  @Min(14)
   @Max(100)
   age?: number;
 

@@ -1,11 +1,10 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsInt, Min, Max, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min, Max, IsObject } from 'class-validator';
 
-export class RegisterDto {
-  @IsEmail()
+export class CompleteOnboardingDto {
+  @IsString()
   email: string;
 
   @IsString()
-  @MinLength(6)
   password: string;
 
   @IsString()
@@ -30,8 +29,7 @@ export class RegisterDto {
   height?: number;
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  interests?: string[];
+  @IsObject()
+  preferences?: any;
 }
 

@@ -44,9 +44,26 @@ A full-stack dating application built with Next.js 14, NestJS, PostgreSQL, and W
 
 ### Setup
 
-1. **Clone and install dependencies:**
+1. **Install dependencies:**
+
+You can install dependencies in two ways:
+
+**Option A: Install from root (recommended for monorepo):**
 ```bash
 npm install
+```
+
+**Option B: Install in each app separately:**
+```bash
+# Install backend dependencies
+cd apps/backend
+npm install
+cd ../..
+
+# Install frontend dependencies
+cd apps/frontend
+npm install
+cd ../..
 ```
 
 2. **Start PostgreSQL database:**
@@ -58,7 +75,7 @@ docker-compose up -d
 
 Backend (`apps/backend/.env`):
 ```env
-DATABASE_URL="postgresql://shtinder:shtinder_password@localhost:5432/shtinder_db"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/shtinder_db"
 JWT_SECRET="your-secret-key"
 JWT_REFRESH_SECRET="your-refresh-secret-key"
 AWS_ACCESS_KEY_ID="your-aws-key"
@@ -115,4 +132,5 @@ After seeding, you can login with admin accounts:
 ## License
 
 MIT
+
 

@@ -11,6 +11,7 @@ interface User {
   height?: number
   interests: string[]
   isAdmin: boolean
+  onboardingComplete?: boolean
 }
 
 interface AuthState {

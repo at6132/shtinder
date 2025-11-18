@@ -25,6 +25,7 @@ model User {
   longitude        Float?
   preferences      Json
   isAdmin          Boolean  @default(false)
+  onboardingComplete Boolean @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   lastActiveAt     DateTime @default(now())
@@ -36,6 +37,9 @@ model User {
   messagesReceived Message[]      @relation("ReceivedMessages")
   blocksInitiated  Block[]        @relation("BlockerRelation")
   blocksReceived   Block[]        @relation("BlockedRelation")
+  reportsMade      Report[]       @relation("ReporterRelation")
+  reportsReceived  Report[]       @relation("TargetRelation")
+  adminLogs        AdminLog[]     @relation("AdminLogRelation")
 }
 
 model Photo {
@@ -100,6 +104,8 @@ model Report {
   reason      String
   createdAt   DateTime @default(now())
   resolved    Boolean  @default(false)
+  reporter    User     @relation("ReporterRelation", fields: [reporterId], references: [id], onDelete: Cascade)
+  target      User     @relation("TargetRelation", fields: [targetId], references: [id], onDelete: Cascade)
 
   @@index([reporterId])
   @@index([targetId])
@@ -111,6 +117,7 @@ model AdminLog {
   action      String
   target      String?
   createdAt   DateTime @default(now())
+  admin       User     @relation("AdminLogRelation", fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
 }

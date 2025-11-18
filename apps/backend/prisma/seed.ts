@@ -52,7 +52,7 @@ async function main() {
   const hashedPassword = await bcrypt.hash('password123', 10);
 
   const defaultPreferences = {
-    ageRange: { min: 18, max: 99 },
+    ageRange: { min: 14, max: 99 },
     gender: 'both',
     maxDistanceKm: 100,
     interestsPriority: false,

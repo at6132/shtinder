@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -47,6 +48,12 @@ export class AuthController {
     res.redirect(
       `${frontendUrl}/auth/callback?accessToken=${user.accessToken}&refreshToken=${user.refreshToken}`,
     );
+  }
+
+  @Public()
+  @Post('complete-onboarding')
+  async completeOnboarding(@Body() dto: CompleteOnboardingDto) {
+    return this.authService.completeOnboarding(dto);
   }
 
   @Public()
