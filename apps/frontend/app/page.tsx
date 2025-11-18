@@ -4,11 +4,24 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import { Heart, MapPin, Sparkles, Users } from 'lucide-react'
 
 export default function HomePage() {
   const router = useRouter()
   const user = useAuthStore((state) => state.user)
+
+  // Fetch total match count
+  const { data: matchCountData } = useQuery({
+    queryKey: ['matches-count'],
+    queryFn: async () => {
+      const res = await api.get('/matches/count')
+      return res.data
+    },
+  })
+
+  const totalMatches = matchCountData?.count || 0
 
   // Redirect authenticated users to swipe page
   useEffect(() => {
@@ -66,9 +79,19 @@ export default function HomePage() {
                 Shtinder!
               </span>
             </h1>
-            <p className="text-xl md:text-2xl lg:text-3xl text-neutral-dark-grey mb-8 md:mb-12 font-medium">
+            <p className="text-xl md:text-2xl lg:text-3xl text-neutral-dark-grey mb-4 md:mb-6 font-medium">
               Making shidduchim in Passaic easier.
             </p>
+
+            {/* Match Counter */}
+            <div className="mb-8 md:mb-12">
+              <div className="inline-flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 md:py-4 bg-neutral-white/80 backdrop-blur-sm rounded-full shadow-lg border border-primary-purple/20">
+                <Heart className="w-5 h-5 md:w-6 md:h-6 text-primary-pink fill-primary-pink" />
+                <span className="text-base md:text-lg text-neutral-dark-grey font-medium">
+                  <span className="font-bold text-primary-purple">{totalMatches.toLocaleString()}</span> matches made!
+                </span>
+              </div>
+            </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center items-center mb-12 md:mb-16">

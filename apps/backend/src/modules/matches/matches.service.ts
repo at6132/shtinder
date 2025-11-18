@@ -64,6 +64,14 @@ export class MatchesService {
     });
   }
 
+  async getTotalMatchesCount(): Promise<number> {
+    return this.prisma.match.count({
+      where: {
+        unmatched: false,
+      },
+    });
+  }
+
   async unmatch(userId: string, dto: UnmatchDto) {
     const match = await this.prisma.match.findUnique({
       where: { id: dto.matchId },
