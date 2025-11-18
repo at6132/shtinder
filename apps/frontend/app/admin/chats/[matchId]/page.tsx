@@ -79,7 +79,7 @@ export default function AdminChatPage() {
   }
 
   // Get unique users from messages
-  const users = Array.from(
+  const users: any[] = Array.from(
     new Map(
       messages.flatMap((msg: any) => [
         [msg.sender.id, msg.sender],
@@ -126,7 +126,7 @@ export default function AdminChatPage() {
         <div className="bg-neutral-white rounded-2xl md:rounded-3xl shadow-xl p-4 md:p-6 border border-neutral-light-grey">
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
             {messages.map((msg: any) => {
-              const isFirstUser = msg.sender.id === users[0]?.id
+              const isFirstUser = users.length > 0 && msg.sender.id === users[0]?.id
               return (
                 <div
                   key={msg.id}
