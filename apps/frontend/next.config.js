@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Railway works BEST with standalone mode
-  output: 'standalone',
+  output: undefined, // disable standalone
   reactStrictMode: true,
   eslint: {
     // Allow build to continue even with warnings (img tags)
