@@ -80,15 +80,13 @@ export default function OnboardingPage() {
         if (isExistingUser && user) {
           // Existing user completing onboarding
           const heightCm = convertToCm(heightFeet, heightInches)
-          const updatedUser = await api.post('/users/complete-onboarding', {
+          await api.post('/users/complete-onboarding', {
             bio,
             height: heightCm,
             preferences: {
               lookingFor: boyType,
             },
           })
-
-          updateUser(updatedUser.data)
 
           // Upload photos
           for (const photoDataUrl of photos) {
@@ -106,6 +104,20 @@ export default function OnboardingPage() {
             } catch (error) {
               console.error('Failed to upload photo:', error)
             }
+          }
+
+          // Fetch fresh user data to ensure onboardingComplete is updated
+          try {
+            const userResponse = await api.get('/auth/me')
+            const freshUserData = userResponse.data
+            updateUser(freshUserData)
+            
+            // Small delay to ensure store is updated before navigation
+            await new Promise(resolve => setTimeout(resolve, 100))
+          } catch (error) {
+            console.error('Failed to fetch updated user data:', error)
+            // Still update with onboardingComplete: true to prevent redirect loop
+            updateUser({ ...user, onboardingComplete: true })
           }
 
           router.push('/swipe')

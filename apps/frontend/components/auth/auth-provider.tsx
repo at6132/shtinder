@@ -50,7 +50,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return
       }
 
-      // Skip auth check for public routes (home page)
+      // Skip auth check for public routes (home page and onboarding)
+      // Note: We allow onboarding page even if user has completed it, to prevent redirect loops
       if (pathname === '/' || pathname === '/onboarding') {
         setIsLoading(false)
         return
@@ -183,6 +184,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
           router.push('/swipe')
         }
         return
+      }
+
+      // If we have user and tokens, and user hasn't completed onboarding, redirect to onboarding
+      // BUT only if we're not already on the onboarding page (to prevent redirect loops)
+      if (user && accessToken && !user.onboardingComplete && pathname !== '/onboarding') {
+        // Only redirect if we're on a protected route
+        if (protectedRoutes.some(route => pathname?.startsWith(route))) {
+          // Before redirecting, try to refresh user data in case it's stale
+          try {
+            const userResponse = await api.get('/auth/me')
+            const freshUserData = userResponse.data
+            if (freshUserData.onboardingComplete) {
+              // User actually completed onboarding, update store and allow access
+              setAuth(freshUserData, accessToken, refreshToken || '')
+              setIsLoading(false)
+              return
+            }
+            // User really hasn't completed onboarding, redirect
+            setAuth(freshUserData, accessToken, refreshToken || '')
+          } catch (error) {
+            // Failed to refresh, proceed with redirect
+            console.error('Failed to refresh user data:', error)
+          }
+          router.push('/onboarding')
+          return
+        }
       }
 
       setIsLoading(false)
