@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  password         String?
+  name             String
+  age              Int
+  gender           String
+  bio              String?
+  height           Int?
+  interests        String[]
+  photos           Photo[]
+  latitude         Float?
+  longitude        Float?
+  preferences      Json
+  isAdmin          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  lastActiveAt     DateTime @default(now())
+  swipes           Swipe[]        @relation("Swipes")
+  receivedSwipes   Swipe[]        @relation("ReceivedSwipes")
+  matches1         Match[]        @relation("MatchUser1")
+  matches2         Match[]        @relation("MatchUser2")
+  messagesSent     Message[]      @relation("SentMessages")
+  messagesReceived Message[]      @relation("ReceivedMessages")
+  blocksInitiated  Block[]        @relation("BlockerRelation")
+  blocksReceived   Block[]        @relation("BlockedRelation")
+}
+
+model Photo {
+  id        String   @id @default(cuid())
+  url       String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Swipe {
+  id        String   @id @default(cuid())
+  swiperId  String
+  targetId  String
+  direction String   // "like", "dislike", "superlike"
+  createdAt DateTime @default(now())
+  swiper    User     @relation("Swipes", fields: [swiperId], references: [id], onDelete: Cascade)
+  target    User     @relation("ReceivedSwipes", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([swiperId, targetId])
+  @@index([swiperId])
+  @@index([targetId])
+}
+
+model Match {
+  id        String   @id @default(cuid())
+  user1Id   String
+  user2Id   String
+  createdAt DateTime @default(now())
+  unmatched Boolean  @default(false)
+  user1     User     @relation("MatchUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2     User     @relation("MatchUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  matchId     String
+  senderId    String
+  receiverId String
+  content     String?
+  type        String   @default("text") // "text", "image"
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String
+  targetId    String
+  reason      String
+  createdAt   DateTime @default(now())
+  resolved    Boolean  @default(false)
+
+  @@index([reporterId])
+  @@index([targetId])
+}
+
+model AdminLog {
+  id          String   @id @default(cuid())
+  adminId     String
+  action      String
+  target      String?
+  createdAt   DateTime @default(now())
+
+  @@index([adminId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   User     @relation("BlockerRelation", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("BlockedRelation", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
