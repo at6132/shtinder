@@ -142,9 +142,9 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen bg-soft-love-gradient pt-16 md:pt-0 pb-20 md:pb-0">
-      {/* Sidebar - Tinder-style chat list */}
-      <div className={`${sidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-80 bg-neutral-white border-r border-neutral-light-grey`}>
+    <div className="flex h-screen bg-soft-love-gradient pt-16 md:pt-0 pb-0 md:pb-0 overflow-hidden">
+      {/* Sidebar - Tinder-style chat list (hidden on mobile) */}
+      <div className={`${sidebarOpen ? 'flex' : 'hidden'} hidden md:flex flex-col w-80 bg-neutral-white border-r border-neutral-light-grey`}>
         <div className="p-4 border-b border-neutral-light-grey">
           <h2 className="text-xl font-bold text-neutral-near-black flex items-center gap-2">
             <MessageCircle className="w-6 h-6 text-primary-purple" />
@@ -215,14 +215,15 @@ export default function ChatPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex flex-col flex-1 min-w-0">
-        {/* Header */}
-        <div className="bg-neutral-white border-b border-neutral-light-grey px-3 md:px-4 py-2 md:py-3 flex items-center gap-3 md:gap-4 shadow-sm safe-area-inset-top">
+      <div className="flex flex-col flex-1 min-w-0 h-full">
+        {/* Header - Mobile optimized */}
+        <div className="bg-neutral-white border-b border-neutral-light-grey px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 md:gap-4 shadow-sm safe-area-inset-top z-10 flex-shrink-0">
           <button
-            onClick={() => router.back()}
-            className="p-2 hover:bg-neutral-light-grey rounded-lg transition-colors md:hidden"
+            onClick={() => router.push('/dms')}
+            className="p-2 -ml-1 active:bg-neutral-light-grey rounded-lg transition-colors touch-manipulation md:hidden"
+            aria-label="Back to messages"
           >
-            <ArrowLeft className="w-5 h-5 text-neutral-dark-grey" />
+            <ArrowLeft className="w-6 h-6 text-neutral-dark-grey" />
           </button>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -232,7 +233,7 @@ export default function ChatPage() {
           </button>
           {otherUser && (
             <>
-              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-light-grey flex-shrink-0">
+              <div className="relative w-9 h-9 md:w-10 md:h-10 rounded-full overflow-hidden bg-neutral-light-grey flex-shrink-0">
                 {otherUser.photos && otherUser.photos[0] ? (
                   <img
                     src={otherUser.photos[0].url}
@@ -241,71 +242,83 @@ export default function ChatPage() {
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">
-                    <span className="text-lg font-bold text-primary-purple">
+                    <span className="text-base md:text-lg font-bold text-primary-purple">
                       {otherUser.name?.charAt(0).toUpperCase() || '?'}
                     </span>
                   </div>
                 )}
               </div>
-              <div className="flex-1">
-                <h2 className="font-bold text-neutral-near-black">{otherUser.name}</h2>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-bold text-base md:text-lg text-neutral-near-black truncate">{otherUser.name}</h2>
               </div>
             </>
           )}
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
-        {messages?.map((msg: Message) => {
-          const isOwn = msg.senderId === user?.id
-          return (
-            <div
-              key={msg.id}
-              className={`flex ${isOwn ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`}
-            >
-              <div
-                className={`max-w-[75%] md:max-w-xs lg:max-w-md px-3 md:px-4 py-2 md:py-3 rounded-xl md:rounded-2xl shadow-md ${
-                  isOwn
-                    ? 'bg-flame-gradient text-white'
-                    : 'bg-neutral-light-grey text-neutral-near-black border border-neutral-light-grey'
-                }`}
-              >
-                <p className="text-sm md:text-base leading-relaxed break-words">{msg.content}</p>
-                <p className={`text-xs mt-1.5 ${
-                  isOwn ? 'text-white/70' : 'text-neutral-dark-grey'
-                }`}>
-                  {formatTime(msg.createdAt)}
-                </p>
+        {/* Messages - Mobile optimized */}
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2.5 md:space-y-4 overscroll-contain">
+          {messages?.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center px-4">
+                <MessageCircle className="w-12 h-12 md:w-16 md:h-16 mx-auto text-primary-purple/50 mb-4" />
+                <p className="text-neutral-dark-grey text-sm md:text-base">No messages yet. Start the conversation!</p>
               </div>
             </div>
-          )
-        })}
-        <div ref={messagesEndRef} />
-      </div>
-
-        {/* Input */}
-        <div className="bg-neutral-white border-t border-neutral-light-grey p-3 md:p-4 safe-area-inset-bottom">
-        <div className="flex gap-2 md:gap-3 items-end">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-              placeholder="Type a message..."
-              className="w-full px-3 md:px-4 py-2.5 md:py-3 pr-10 md:pr-12 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all resize-none text-sm md:text-base"
-            />
-          </div>
-          <button
-            onClick={handleSend}
-            disabled={!message.trim() || sendMessageMutation.isPending}
-            className="bg-flame-gradient text-white p-2.5 md:p-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center touch-manipulation"
-            aria-label="Send message"
-          >
-            <Send className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
+          ) : (
+            messages?.map((msg: Message) => {
+              const isOwn = msg.senderId === user?.id
+              return (
+                <div
+                  key={msg.id}
+                  className={`flex ${isOwn ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`}
+                >
+                  <div
+                    className={`max-w-[85%] sm:max-w-[75%] md:max-w-xs lg:max-w-md px-3.5 md:px-4 py-2.5 md:py-3 rounded-2xl md:rounded-2xl shadow-sm ${
+                      isOwn
+                        ? 'bg-flame-gradient text-white'
+                        : 'bg-neutral-light-grey text-neutral-near-black border border-neutral-light-grey'
+                    }`}
+                  >
+                    <p className="text-sm md:text-base leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
+                    <p className={`text-[10px] md:text-xs mt-1.5 ${
+                      isOwn ? 'text-white/70' : 'text-neutral-dark-grey'
+                    }`}>
+                      {formatTime(msg.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              )
+            })
+          )}
+          <div ref={messagesEndRef} />
         </div>
-      </div>
+
+        {/* Input - Mobile optimized with safe area */}
+        <div className="bg-neutral-white border-t border-neutral-light-grey p-3 md:p-4 pb-safe safe-area-inset-bottom flex-shrink-0">
+          <div className="flex gap-2 md:gap-3 items-end">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                placeholder="Type a message..."
+                className="w-full px-4 md:px-4 py-3 md:py-3 pr-12 md:pr-12 border border-neutral-light-grey rounded-2xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all resize-none text-base md:text-base touch-manipulation"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="sentences"
+              />
+            </div>
+            <button
+              onClick={handleSend}
+              disabled={!message.trim() || sendMessageMutation.isPending}
+              className="bg-flame-gradient text-white p-3 md:p-3 rounded-2xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center touch-manipulation min-w-[48px] min-h-[48px]"
+              aria-label="Send message"
+            >
+              <Send className="w-5 h-5 md:w-5 md:h-5" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

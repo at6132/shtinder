@@ -32,6 +32,10 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+.pb-safe {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
 /* Touch-friendly buttons */
 button, a {
   min-height: 44px;
