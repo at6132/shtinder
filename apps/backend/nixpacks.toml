@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_18", "npm-9_x"]
 
 [phases.install]
-cmds = ["npm install --legacy-peer-deps"]
+cmds = ["npm install --legacy-peer-deps --include=dev"]
 
 [phases.build]
 cmds = ["npm run build", "npx prisma generate", "ls -la dist/"]
