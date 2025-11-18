@@ -43,13 +43,21 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password'],
   });
 
-  const port = process.env.PORT || 3001;
-  await app.listen(port, '0.0.0.0'); // Listen on all interfaces for Railway
-  logger.log(`🚀 Backend running on port ${port}`);
+  const port = parseInt(process.env.PORT || '3001', 10);
+  
+  logger.log(`🚀 Starting NestJS application...`);
   logger.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.log(`🔗 CORS Origins: ${allowedOrigins.join(', ')}`);
-  logger.log(`🌐 Server accessible on: http://0.0.0.0:${port}`);
+  logger.log(`🌐 Binding to: 0.0.0.0:${port}`);
+  
+  await app.listen(port, '0.0.0.0'); // Listen on all interfaces for Railway
+  
+  logger.log(`✅ Backend server ready on http://0.0.0.0:${port}`);
+  logger.log(`✅ Server is listening and ready to accept connections`);
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  logger.error('❌ Failed to start application:', error);
+  process.exit(1);
+});
 
