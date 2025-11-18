@@ -39,7 +39,6 @@ interface Match {
 export default function ChatPage() {
   const params = useParams()
   const router = useRouter()
-  const pathname = usePathname()
   const matchId = params.matchId as string
   const user = useAuthStore((state) => state.user)
   const [socket, setSocket] = useState<Socket | null>(null)
