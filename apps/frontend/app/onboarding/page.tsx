@@ -39,6 +39,16 @@ export default function OnboardingPage() {
 
   // Check if user is logged in (existing user completing onboarding) or has temp registration data
   useEffect(() => {
+    // If user has already completed onboarding, redirect them away
+    if (user && user.onboardingComplete) {
+      if (user.isAdmin) {
+        router.push('/admin')
+      } else {
+        router.push('/swipe')
+      }
+      return
+    }
+
     if (user && !user.onboardingComplete) {
       // Existing user who needs to complete onboarding
       setIsExistingUser(true)
@@ -80,29 +90,39 @@ export default function OnboardingPage() {
         if (isExistingUser && user) {
           // Existing user completing onboarding
           const heightCm = convertToCm(heightFeet, heightInches)
-          await api.post('/users/complete-onboarding', {
-            bio,
+          
+          // Complete onboarding - this sets onboardingComplete: true in the database
+          const onboardingResponse = await api.post('/users/complete-onboarding', {
+            bio: bio || '',
             height: heightCm,
             preferences: {
               lookingFor: boyType,
             },
           })
 
-          // Upload photos
-          for (const photoDataUrl of photos) {
-            try {
-              const response = await fetch(photoDataUrl)
-              const blob = await response.blob()
-              const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' })
-              
-              const formData = new FormData()
-              formData.append('photo', file)
-              
-              await api.post('/users/upload-photo', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-              })
-            } catch (error) {
-              console.error('Failed to upload photo:', error)
+          // Update store immediately with the response data
+          if (onboardingResponse.data) {
+            updateUser({ ...user, ...onboardingResponse.data, onboardingComplete: true })
+          }
+
+          // Upload photos (optional - don't block onboarding completion if this fails)
+          if (photos.length > 0) {
+            for (const photoDataUrl of photos) {
+              try {
+                const response = await fetch(photoDataUrl)
+                const blob = await response.blob()
+                const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' })
+                
+                const formData = new FormData()
+                formData.append('photo', file)
+                
+                await api.post('/users/upload-photo', formData, {
+                  headers: { 'Content-Type': 'multipart/form-data' },
+                })
+              } catch (error) {
+                console.error('Failed to upload photo:', error)
+                // Continue with other photos even if one fails
+              }
             }
           }
 
@@ -110,7 +130,12 @@ export default function OnboardingPage() {
           try {
             const userResponse = await api.get('/auth/me')
             const freshUserData = userResponse.data
-            updateUser(freshUserData)
+            if (freshUserData.onboardingComplete) {
+              updateUser(freshUserData)
+            } else {
+              // If for some reason it's not marked complete, force it
+              updateUser({ ...freshUserData, onboardingComplete: true })
+            }
             
             // Small delay to ensure store is updated before navigation
             await new Promise(resolve => setTimeout(resolve, 100))
@@ -135,7 +160,7 @@ export default function OnboardingPage() {
           const { interests, ...registrationDataWithoutInterests } = registrationData
           const response = await api.post('/auth/complete-onboarding', {
             ...registrationDataWithoutInterests,
-            bio,
+            bio: bio || '',
             height: heightCm,
             preferences: {
               ageRange: { min: 14, max: 99 },
@@ -148,23 +173,33 @@ export default function OnboardingPage() {
           })
 
           const { user: newUser, accessToken, refreshToken } = response.data
-          setAuth(newUser, accessToken, refreshToken)
+          
+          // Ensure onboardingComplete is set (should be from backend, but double-check)
+          const userWithOnboarding = {
+            ...newUser,
+            onboardingComplete: true,
+          }
+          
+          setAuth(userWithOnboarding, accessToken, refreshToken)
 
-          // Upload photos after account creation
-          for (const photoDataUrl of photos) {
-            try {
-              const response = await fetch(photoDataUrl)
-              const blob = await response.blob()
-              const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' })
-              
-              const formData = new FormData()
-              formData.append('photo', file)
-              
-              await api.post('/users/upload-photo', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-              })
-            } catch (error) {
-              console.error('Failed to upload photo:', error)
+          // Upload photos after account creation (optional - don't block if this fails)
+          if (photos.length > 0) {
+            for (const photoDataUrl of photos) {
+              try {
+                const response = await fetch(photoDataUrl)
+                const blob = await response.blob()
+                const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' })
+                
+                const formData = new FormData()
+                formData.append('photo', file)
+                
+                await api.post('/users/upload-photo', formData, {
+                  headers: { 'Content-Type': 'multipart/form-data' },
+                })
+              } catch (error) {
+                console.error('Failed to upload photo:', error)
+                // Continue with other photos even if one fails
+              }
             }
           }
 

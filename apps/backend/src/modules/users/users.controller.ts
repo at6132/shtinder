@@ -90,7 +90,30 @@ export class UsersController {
     @Body('height') height?: number,
     @Body('preferences') preferences?: any,
   ) {
-    return this.usersService.completeOnboardingForExistingUser(user.id, bio, height, preferences);
+    try {
+      console.log(`📝 [Onboarding Controller] Request received for user ${user.id}`, {
+        hasBio: bio !== undefined,
+        hasHeight: height !== undefined,
+        hasPreferences: preferences !== undefined,
+        body: { bio, height, preferences },
+      });
+
+      const result = await this.usersService.completeOnboardingForExistingUser(user.id, bio, height, preferences);
+      
+      console.log(`✅ [Onboarding Controller] Successfully completed onboarding for user ${user.id}`, {
+        userId: result.id,
+        onboardingComplete: result.onboardingComplete,
+        email: result.email,
+      });
+
+      return result;
+    } catch (error) {
+      console.error(`❌ [Onboarding Controller] Error completing onboarding for user ${user.id}:`, {
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
   }
 }
 

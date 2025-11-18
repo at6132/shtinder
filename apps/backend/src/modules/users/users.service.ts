@@ -113,18 +113,46 @@ export class UsersService {
     height?: number,
     preferences?: any,
   ) {
+    console.log(`📝 [Onboarding] Starting onboarding completion for user ${userId}`, {
+      bio: bio !== undefined ? 'provided' : 'not provided',
+      height: height !== undefined ? 'provided' : 'not provided',
+      preferences: preferences ? 'provided' : 'not provided',
+    });
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        bio: true,
+        height: true,
+        preferences: true,
+        onboardingComplete: true,
+      },
     });
 
     if (!user) {
+      console.error(`❌ [Onboarding] User ${userId} not found`);
       throw new NotFoundException('User not found');
     }
+
+    console.log(`📋 [Onboarding] Current user state:`, {
+      userId: user.id,
+      currentOnboardingComplete: user.onboardingComplete,
+      hasBio: !!user.bio,
+      hasHeight: user.height !== null && user.height !== undefined,
+    });
 
     const updatedPreferences = {
       ...(user.preferences as any),
       ...preferences,
     };
+
+    console.log(`💾 [Onboarding] Updating user ${userId} with:`, {
+      bio: bio !== undefined ? bio : user.bio,
+      height: height !== undefined ? height : user.height,
+      onboardingComplete: true,
+    });
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
@@ -147,6 +175,26 @@ export class UsersService {
         onboardingComplete: true,
         createdAt: true,
       },
+    });
+
+    // Verify the update was successful by querying the database again
+    const verification = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        onboardingComplete: true,
+      },
+    });
+
+    if (!verification || !verification.onboardingComplete) {
+      console.error(`❌ [Onboarding] CRITICAL: Update failed! User ${userId} onboardingComplete is still false`);
+      throw new Error('Failed to mark onboarding as complete');
+    }
+
+    console.log(`✅ [Onboarding] User ${userId} onboarding successfully marked as complete`);
+    console.log(`✅ [Onboarding] Verification:`, {
+      userId: verification.id,
+      onboardingComplete: verification.onboardingComplete,
     });
 
     return updatedUser;

@@ -19,6 +19,7 @@ export class AdminService {
         gender: true,
         bio: true,
         isAdmin: true,
+        onboardingComplete: true,
         createdAt: true,
         lastActiveAt: true,
         photos: {

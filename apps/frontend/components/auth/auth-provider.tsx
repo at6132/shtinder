@@ -50,9 +50,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return
       }
 
-      // Skip auth check for public routes (home page and onboarding)
-      // Note: We allow onboarding page even if user has completed it, to prevent redirect loops
-      if (pathname === '/' || pathname === '/onboarding') {
+      // Skip auth check for home page
+      if (pathname === '/') {
+        setIsLoading(false)
+        return
+      }
+
+      // Handle onboarding page - redirect if already completed
+      if (pathname === '/onboarding') {
+        if (user && user.onboardingComplete) {
+          // User already completed onboarding, redirect them away
+          if (user.isAdmin) {
+            router.push('/admin')
+          } else {
+            router.push('/swipe')
+          }
+          return
+        }
+        // User hasn't completed onboarding, allow access
         setIsLoading(false)
         return
       }

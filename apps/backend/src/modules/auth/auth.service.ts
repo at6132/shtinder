@@ -210,6 +210,11 @@ export class AuthService {
     };
 
     // Create the user account now that onboarding is complete
+    console.log(`📝 [Auth Onboarding] Creating new user account with onboarding complete`, {
+      email: dto.email,
+      name: dto.name,
+    });
+
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
@@ -236,6 +241,30 @@ export class AuthService {
         onboardingComplete: true,
         createdAt: true,
       },
+    });
+
+    // Verify the user was created with onboardingComplete: true
+    const verification = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        onboardingComplete: true,
+      },
+    });
+
+    if (!verification || !verification.onboardingComplete) {
+      console.error(`❌ [Auth Onboarding] CRITICAL: User created but onboardingComplete is false!`, {
+        userId: user.id,
+        onboardingComplete: verification?.onboardingComplete,
+      });
+      throw new Error('Failed to create user with onboarding complete');
+    }
+
+    console.log(`✅ [Auth Onboarding] User created successfully with onboarding complete:`, {
+      userId: user.id,
+      email: user.email,
+      onboardingComplete: user.onboardingComplete,
+      verified: verification.onboardingComplete,
     });
 
     const tokens = await this.generateTokens(user.id, user.email);
