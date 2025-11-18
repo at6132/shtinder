@@ -4,11 +4,10 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { useChatStore } from '@/store/chat-store'
 import { useAuthStore } from '@/store/auth-store'
 import { io, Socket } from 'socket.io-client'
-import Image from 'next/image'
-import { Send, ArrowLeft, Image as ImageIcon } from 'lucide-react'
+import { Send, ArrowLeft, MessageCircle, Clock } from 'lucide-react'
+import Link from 'next/link'
 
 interface Message {
   id: string
@@ -22,19 +21,45 @@ interface Message {
   }
 }
 
+interface Match {
+  id: string
+  user: {
+    id: string
+    name: string
+    age: number
+    photos: { url: string }[]
+  }
+  lastMessage?: {
+    content: string
+    createdAt: string
+    senderId: string
+  }
+}
+
 export default function ChatPage() {
   const params = useParams()
   const router = useRouter()
+  const pathname = usePathname()
   const matchId = params.matchId as string
   const user = useAuthStore((state) => state.user)
   const [socket, setSocket] = useState<Socket | null>(null)
   const [message, setMessage] = useState('')
+  const [sidebarOpen, setSidebarOpen] = useState(true) // Show sidebar by default on desktop
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { data: messages, refetch } = useQuery({
     queryKey: ['chat', matchId],
     queryFn: async () => {
       const res = await api.get(`/chat/${matchId}`)
+      return res.data
+    },
+  })
+
+  // Fetch all matches for sidebar
+  const { data: matches } = useQuery({
+    queryKey: ['matches'],
+    queryFn: async () => {
+      const res = await api.get('/matches')
       return res.data
     },
   })
@@ -82,13 +107,9 @@ export default function ChatPage() {
   })
 
   const handleSend = () => {
-    if (message.trim()) {
+    if (message.trim() && !sendMessageMutation.isPending) {
+      // Only send via API - socket will broadcast to other users automatically
       sendMessageMutation.mutate(message)
-      socket?.emit('message:send', {
-        matchId,
-        content: message,
-        type: 'text',
-      })
     }
   }
 
@@ -106,42 +127,136 @@ export default function ChatPage() {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   }
 
+  const formatLastMessageTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
+
+    if (minutes < 1) return 'Just now'
+    if (minutes < 60) return `${minutes}m ago`
+    if (hours < 24) return `${hours}h ago`
+    if (days < 7) return `${days}d ago`
+    return date.toLocaleDateString()
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-soft-love-gradient pt-16 md:pt-0 pb-20 md:pb-0">
-      {/* Header */}
-      <div className="bg-neutral-white border-b border-neutral-light-grey px-3 md:px-4 py-2 md:py-3 flex items-center gap-3 md:gap-4 shadow-sm safe-area-inset-top">
-        <button
-          onClick={() => router.back()}
-          className="p-2 hover:bg-neutral-light-grey rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-neutral-dark-grey" />
-        </button>
-        {otherUser && (
-          <>
-            <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-light-grey flex-shrink-0">
-              {otherUser.photos && otherUser.photos[0] ? (
-                <img
-                  src={otherUser.photos[0].url}
-                  alt={otherUser.name}
-                  className="w-full h-full object-cover rounded-full"
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <span className="text-lg font-bold text-primary-purple">
-                    {otherUser.name?.charAt(0).toUpperCase() || '?'}
-                  </span>
-                </div>
-              )}
+    <div className="flex h-screen bg-soft-love-gradient pt-16 md:pt-0 pb-20 md:pb-0">
+      {/* Sidebar - Tinder-style chat list */}
+      <div className={`${sidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-80 bg-neutral-white border-r border-neutral-light-grey`}>
+        <div className="p-4 border-b border-neutral-light-grey">
+          <h2 className="text-xl font-bold text-neutral-near-black flex items-center gap-2">
+            <MessageCircle className="w-6 h-6 text-primary-purple" />
+            Messages
+          </h2>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {matches?.length === 0 ? (
+            <div className="p-4 text-center text-neutral-dark-grey">
+              <p>No matches yet</p>
             </div>
-            <div className="flex-1">
-              <h2 className="font-bold text-neutral-near-black">{otherUser.name}</h2>
+          ) : (
+            <div className="divide-y divide-neutral-light-grey">
+              {matches?.map((match: Match) => {
+                const isActive = match.id === matchId
+                return (
+                  <Link
+                    key={match.id}
+                    href={`/chat/${match.id}`}
+                    className={`block p-4 hover:bg-neutral-light-grey transition-colors ${isActive ? 'bg-primary-purple/10 border-l-4 border-primary-purple' : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-light-grey flex-shrink-0">
+                        {match.user.photos && match.user.photos[0] ? (
+                          <img
+                            src={match.user.photos[0].url}
+                            alt={match.user.name}
+                            className="w-full h-full object-cover rounded-full"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <span className="text-lg font-bold text-primary-purple">
+                              {match.user.name?.charAt(0).toUpperCase() || '?'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-bold text-sm text-neutral-near-black truncate">
+                            {match.user.name}
+                          </h3>
+                          {match.lastMessage && (
+                            <span className="text-xs text-neutral-medium-grey flex items-center gap-1 flex-shrink-0 ml-2">
+                              <Clock className="w-3 h-3" />
+                              {formatLastMessageTime(match.lastMessage.createdAt)}
+                            </span>
+                          )}
+                        </div>
+                        {match.lastMessage ? (
+                          <p className="text-xs text-neutral-dark-grey truncate">
+                            {match.lastMessage.senderId === user?.id ? 'You: ' : ''}
+                            {match.lastMessage.content}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-primary-purple font-medium">
+                            Start a conversation
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
+      {/* Main Chat Area */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Header */}
+        <div className="bg-neutral-white border-b border-neutral-light-grey px-3 md:px-4 py-2 md:py-3 flex items-center gap-3 md:gap-4 shadow-sm safe-area-inset-top">
+          <button
+            onClick={() => router.back()}
+            className="p-2 hover:bg-neutral-light-grey rounded-lg transition-colors md:hidden"
+          >
+            <ArrowLeft className="w-5 h-5 text-neutral-dark-grey" />
+          </button>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="hidden md:block p-2 hover:bg-neutral-light-grey rounded-lg transition-colors"
+          >
+            <MessageCircle className="w-5 h-5 text-neutral-dark-grey" />
+          </button>
+          {otherUser && (
+            <>
+              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-light-grey flex-shrink-0">
+                {otherUser.photos && otherUser.photos[0] ? (
+                  <img
+                    src={otherUser.photos[0].url}
+                    alt={otherUser.name}
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-lg font-bold text-primary-purple">
+                      {otherUser.name?.charAt(0).toUpperCase() || '?'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <h2 className="font-bold text-neutral-near-black">{otherUser.name}</h2>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
         {messages?.map((msg: Message) => {
           const isOwn = msg.senderId === user?.id
           return (
@@ -169,8 +284,8 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="bg-neutral-white border-t border-neutral-light-grey p-3 md:p-4 safe-area-inset-bottom">
+        {/* Input */}
+        <div className="bg-neutral-white border-t border-neutral-light-grey p-3 md:p-4 safe-area-inset-bottom">
         <div className="flex gap-2 md:gap-3 items-end">
           <div className="flex-1 relative">
             <input
@@ -191,6 +306,7 @@ export default function ChatPage() {
             <Send className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
+      </div>
       </div>
     </div>
   )
