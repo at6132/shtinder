@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
-import Sidebar from '@/components/layout/sidebar'
+import ConditionalSidebar from '@/components/layout/conditional-sidebar'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'SHTINDER - Dating App',
-  description: 'A Tinder-style dating application',
+  title: 'SHTINDER - Making shidduchim in Passaic easier',
+  description: 'A Tinder-style dating application for the Passaic community',
 }
 
 export const viewport: Viewport = {
@@ -31,8 +31,8 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <Providers>
-          <Sidebar />
-          <main className="sidebar-layout pb-20 md:pb-0 md:ml-20">{children}</main>
+          <ConditionalSidebar />
+          <main className="sidebar-layout">{children}</main>
         </Providers>
       </body>
     </html>

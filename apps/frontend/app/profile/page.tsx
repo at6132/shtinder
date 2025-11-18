@@ -198,7 +198,7 @@ export default function ProfilePage() {
             {mainPhoto && (
               <div className="mb-3 md:mb-4">
                 <div className="relative aspect-video rounded-lg md:rounded-xl overflow-hidden bg-neutral-light-grey group">
-                  <Image src={mainPhoto.url} alt="Main photo" fill className="object-cover" />
+                  <img src={mainPhoto.url} alt="Main photo" className="w-full h-full object-cover" />
                   <div className="absolute top-2 left-2 bg-flame-gradient text-white px-2 md:px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
                     <Star className="w-3 h-3 fill-white" />
                     Main Photo
@@ -224,7 +224,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-3 gap-2 md:gap-4 mb-3 md:mb-4">
                 {otherPhotos.map((photo: any) => (
                   <div key={photo.id} className="relative aspect-square rounded-lg md:rounded-xl overflow-hidden bg-neutral-light-grey group">
-                    <Image src={photo.url} alt="Photo" fill className="object-cover" />
+                    <img src={photo.url} alt="Photo" className="w-full h-full object-cover" />
                     {isEditing && (
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 group-active:opacity-100 transition-opacity flex items-center justify-center gap-1 md:gap-2">
                         <button

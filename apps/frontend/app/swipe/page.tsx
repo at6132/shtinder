@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { motion, AnimatePresence } from 'framer-motion'
-import Image from 'next/image'
+// Using regular img tags for external images to avoid Next.js optimization issues
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { X, Sparkles, Heart, RotateCcw } from 'lucide-react'
@@ -263,14 +263,12 @@ export default function SwipePage() {
                       )}
                     </>
                   )}
-                  <div className="relative h-[60vh] md:h-[500px] bg-neutral-light-grey flex items-center justify-center">
+                  <div className="relative h-[60vh] md:h-[500px] bg-neutral-light-grey flex items-center justify-center overflow-hidden">
                     {currentUser.photos && currentUser.photos.length > 0 && currentUser.photos[photoIndex] ? (
-                      <Image
+                      <img
                         src={currentUser.photos[photoIndex].url}
                         alt={currentUser.name}
-                        fill
-                        className="object-cover"
-                        priority
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="text-primary-purple text-6xl md:text-8xl font-bold">

@@ -116,11 +116,10 @@ export default function ChatPage() {
           <>
             <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-light-grey flex-shrink-0">
               {otherUser.photos && otherUser.photos[0] ? (
-                <Image
+                <img
                   src={otherUser.photos[0].url}
                   alt={otherUser.name}
-                  fill
-                  className="object-cover"
+                  className="w-full h-full object-cover rounded-full"
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">

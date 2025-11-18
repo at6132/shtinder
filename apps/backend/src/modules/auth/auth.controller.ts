@@ -44,7 +44,12 @@ export class AuthController {
     const user = await this.authService.googleLogin(req.user);
     
     // Redirect to frontend with tokens
-    const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
+    // Use first origin from CORS_ORIGIN or default to localhost
+    const corsOrigins = process.env.CORS_ORIGIN 
+      ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
+      : ['http://localhost:3000'];
+    const frontendUrl = corsOrigins[0]; // Use first origin for OAuth redirect
+    
     res.redirect(
       `${frontendUrl}/auth/callback?accessToken=${user.accessToken}&refreshToken=${user.refreshToken}`,
     );

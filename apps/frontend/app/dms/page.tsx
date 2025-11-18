@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+// Using regular img tags for external images
 import Link from 'next/link'
 import { MessageCircle, Clock, Sparkles } from 'lucide-react'
 
@@ -95,11 +95,10 @@ export default function DMsPage() {
               >
                 <div className="relative w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden flex-shrink-0 bg-neutral-light-grey flex items-center justify-center ring-2 ring-transparent group-hover:ring-primary-purple transition-all">
                   {match.user.photos && match.user.photos[0] ? (
-                    <Image
+                    <img
                       src={match.user.photos[0].url}
                       alt={match.user.name}
-                      fill
-                      className="object-cover"
+                      className="w-full h-full object-cover rounded-full"
                     />
                   ) : (
                     <span className="text-lg md:text-2xl font-bold text-primary-purple">

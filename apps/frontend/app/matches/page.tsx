@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+// Using regular img tags for external images
 import Link from 'next/link'
 import { Heart, MessageCircle, Sparkles } from 'lucide-react'
 
@@ -78,13 +78,12 @@ export default function MatchesPage() {
                 href={`/chat/${match.id}`}
                 className="bg-neutral-white rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 overflow-hidden group"
               >
-                <div className="relative h-48 md:h-64 bg-neutral-light-grey">
+                <div className="relative h-48 md:h-64 bg-neutral-light-grey overflow-hidden">
                   {match.user.photos && match.user.photos[0] ? (
-                    <Image
+                    <img
                       src={match.user.photos[0].url}
                       alt={match.user.name}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full">

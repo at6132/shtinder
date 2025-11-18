@@ -42,10 +42,10 @@ export default function Sidebar() {
     const main = document.querySelector('main.sidebar-layout')
     if (main) {
       if (shouldShowSidebar) {
-        // Desktop: left margin, Mobile: no margin (handled by pb-20 for bottom nav)
-        // The md:ml-20 class in layout.tsx handles desktop
+        // Desktop: left margin, Mobile: bottom padding for bottom nav
+        main.classList.add('pb-20', 'md:pb-0', 'md:ml-20')
       } else {
-        main.classList.remove('ml-20', 'md:ml-20')
+        main.classList.remove('pb-20', 'md:pb-0', 'md:ml-20')
       }
     }
   }, [shouldShowSidebar])

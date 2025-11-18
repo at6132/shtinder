@@ -136,11 +136,10 @@ export default function AdminUserDetailPage() {
             <div className="flex-shrink-0">
               {user.photos && user.photos.length > 0 ? (
                 <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-2xl overflow-hidden bg-neutral-light-grey">
-                  <Image
+                  <img
                     src={user.photos[0].url}
                     alt={user.name}
-                    fill
-                    className="object-cover"
+                    className="w-full h-full object-cover"
                   />
                 </div>
               ) : (
@@ -247,7 +246,7 @@ export default function AdminUserDetailPage() {
                   key={photo.id}
                   className="relative aspect-square rounded-xl overflow-hidden bg-neutral-light-grey group"
                 >
-                  <Image src={photo.url} alt="Photo" fill className="object-cover" />
+                  <img src={photo.url} alt="Photo" className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
