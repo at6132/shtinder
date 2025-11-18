@@ -238,16 +238,26 @@ export class UsersService {
       const excludeIds = [userId, ...swipedIds, ...blockedIds];
 
       // Simple logic: Guys see all girls, Girls see all guys
-      const oppositeGender = user.gender === 'male' ? 'female' : 'male';
+      // Handle "other" gender - show both male and female
+      let genderFilter: any = {};
+      if (user.gender === 'male') {
+        genderFilter = { gender: 'female' };
+      } else if (user.gender === 'female') {
+        genderFilter = { gender: 'male' };
+      } else {
+        // For "other" gender, show both male and female
+        genderFilter = { gender: { in: ['male', 'female'] } };
+      }
 
-      console.log(`📊 [Discover] Showing ${oppositeGender} users, excluding ${excludeIds.length} users`);
+      console.log(`📊 [Discover] User gender: ${user.gender}, Filter:`, JSON.stringify(genderFilter));
+      console.log(`📊 [Discover] Excluding ${excludeIds.length} users`);
 
       // Get all users of opposite gender (unlimited, no age/preference filtering)
       const potentialMatches = await this.prisma.user.findMany({
         where: {
           id: { notIn: excludeIds },
           onboardingComplete: true,
-          gender: oppositeGender,
+          ...genderFilter,
         },
         include: {
           photos: {
@@ -260,6 +270,19 @@ export class UsersService {
       });
 
       console.log(`📊 [Discover] Found ${potentialMatches.length} potential matches`);
+      
+      // Debug: Check total users in database
+      const totalUsers = await this.prisma.user.count({
+        where: { onboardingComplete: true },
+      });
+      const totalOppositeGender = await this.prisma.user.count({
+        where: {
+          onboardingComplete: true,
+          ...genderFilter,
+        },
+      });
+      console.log(`📊 [Discover] Total users with onboarding: ${totalUsers}`);
+      console.log(`📊 [Discover] Total ${user.gender === 'male' ? 'female' : user.gender === 'female' ? 'male' : 'opposite'} users: ${totalOppositeGender}`);
 
       // Remove password and prepare results
       const result = potentialMatches.map((match) => {

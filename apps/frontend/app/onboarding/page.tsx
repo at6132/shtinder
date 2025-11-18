@@ -14,11 +14,28 @@ export default function OnboardingPage() {
   const updateUser = useAuthStore((state) => state.updateUser)
   const [step, setStep] = useState(1)
   const [bio, setBio] = useState('')
-  const [height, setHeight] = useState<number | undefined>()
+  const [heightFeet, setHeightFeet] = useState<number | undefined>()
+  const [heightInches, setHeightInches] = useState<number | undefined>()
   const [photos, setPhotos] = useState<string[]>([])
   const [boyType, setBoyType] = useState<string>('')
   const [registrationData, setRegistrationData] = useState<any>(null)
   const [isExistingUser, setIsExistingUser] = useState(false)
+
+  // Helper function to convert feet and inches to centimeters
+  const convertToCm = (feet: number | undefined, inches: number | undefined): number | undefined => {
+    if (feet === undefined && inches === undefined) return undefined
+    const totalInches = (feet || 0) * 12 + (inches || 0)
+    return Math.round(totalInches * 2.54)
+  }
+
+  // Helper function to convert centimeters to feet and inches
+  const convertFromCm = (cm: number | undefined): { feet: number | undefined; inches: number | undefined } => {
+    if (!cm) return { feet: undefined, inches: undefined }
+    const totalInches = Math.round(cm / 2.54)
+    const feet = Math.floor(totalInches / 12)
+    const inches = totalInches % 12
+    return { feet, inches }
+  }
 
   // Check if user is logged in (existing user completing onboarding) or has temp registration data
   useEffect(() => {
@@ -26,7 +43,9 @@ export default function OnboardingPage() {
       // Existing user who needs to complete onboarding
       setIsExistingUser(true)
       setBio(user.bio || '')
-      setHeight(user.height)
+      const { feet, inches } = convertFromCm(user.height)
+      setHeightFeet(feet)
+      setHeightInches(inches)
     } else {
       // New registration flow
       const tempReg = localStorage.getItem('tempRegistration')
@@ -57,57 +76,92 @@ export default function OnboardingPage() {
     } else if (step === 2) {
       setStep(3)
     } else if (step === 3) {
-      // Complete onboarding - create account in database
-      if (!registrationData) {
-        alert('Registration data missing. Please register again.')
-        router.push('/auth/register')
-        return
-      }
-
       try {
-        // Create the account with all onboarding data
-        const response = await api.post('/auth/complete-onboarding', {
-          ...registrationData,
-          bio,
-          height,
-          preferences: {
-            ageRange: { min: 14, max: 99 },
-            gender: 'both',
-            interestsPriority: false,
-            showMyAge: true,
-            showMyDistance: true,
-            lookingFor: boyType,
-          },
-        })
+        if (isExistingUser && user) {
+          // Existing user completing onboarding
+          const heightCm = convertToCm(heightFeet, heightInches)
+          const updatedUser = await api.post('/users/complete-onboarding', {
+            bio,
+            height: heightCm,
+            preferences: {
+              lookingFor: boyType,
+            },
+          })
 
-        const { user, accessToken, refreshToken } = response.data
-        setAuth(user, accessToken, refreshToken)
+          updateUser(updatedUser.data)
 
-        // Upload photos after account creation
-        // Photos are stored as data URLs, need to convert and upload
-        for (const photoDataUrl of photos) {
-          try {
-            // Convert data URL to blob
-            const response = await fetch(photoDataUrl)
-            const blob = await response.blob()
-            const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' })
-            
-            const formData = new FormData()
-            formData.append('photo', file)
-            
-            await api.post('/users/upload-photo', formData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-            })
-          } catch (error) {
-            console.error('Failed to upload photo:', error)
+          // Upload photos
+          for (const photoDataUrl of photos) {
+            try {
+              const response = await fetch(photoDataUrl)
+              const blob = await response.blob()
+              const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' })
+              
+              const formData = new FormData()
+              formData.append('photo', file)
+              
+              await api.post('/users/upload-photo', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+              })
+            } catch (error) {
+              console.error('Failed to upload photo:', error)
+            }
           }
+
+          router.push('/swipe')
+        } else {
+          // New registration flow
+          if (!registrationData) {
+            alert('Registration data missing. Please register again.')
+            router.push('/auth/register')
+            return
+          }
+
+          // Create the account with all onboarding data
+          const heightCm = convertToCm(heightFeet, heightInches)
+          // Remove interests from registrationData since we don't use it anymore
+          const { interests, ...registrationDataWithoutInterests } = registrationData
+          const response = await api.post('/auth/complete-onboarding', {
+            ...registrationDataWithoutInterests,
+            bio,
+            height: heightCm,
+            preferences: {
+              ageRange: { min: 14, max: 99 },
+              gender: 'both',
+              interestsPriority: false,
+              showMyAge: true,
+              showMyDistance: true,
+              lookingFor: boyType,
+            },
+          })
+
+          const { user: newUser, accessToken, refreshToken } = response.data
+          setAuth(newUser, accessToken, refreshToken)
+
+          // Upload photos after account creation
+          for (const photoDataUrl of photos) {
+            try {
+              const response = await fetch(photoDataUrl)
+              const blob = await response.blob()
+              const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' })
+              
+              const formData = new FormData()
+              formData.append('photo', file)
+              
+              await api.post('/users/upload-photo', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+              })
+            } catch (error) {
+              console.error('Failed to upload photo:', error)
+            }
+          }
+
+          // Clear temp data
+          localStorage.removeItem('tempRegistration')
+          localStorage.removeItem('tempToken')
+
+          router.push('/swipe')
         }
-
-        // Clear temp data
-        localStorage.removeItem('tempRegistration')
-        localStorage.removeItem('tempToken')
-
-        router.push('/swipe')
       } catch (error: any) {
         alert(error.response?.data?.message || 'Failed to complete onboarding')
       }
@@ -115,9 +169,10 @@ export default function OnboardingPage() {
   }
 
   const getLookingForLabel = () => {
-    if (registrationData?.gender === 'female') {
+    const gender = isExistingUser ? user?.gender : registrationData?.gender
+    if (gender === 'female') {
       return 'What boy do you want?'
-    } else if (registrationData?.gender === 'male') {
+    } else if (gender === 'male') {
       return 'What girl do you want?'
     } else {
       return 'What are you looking for?'
@@ -220,8 +275,8 @@ export default function OnboardingPage() {
                 className="w-full px-4 py-3 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all"
               >
                 <option value="">Select an option</option>
-                <option value="shtark">SHtark</option>
-                <option value="yshivish">Yshivish</option>
+                <option value="shtark">Shtark</option>
+                <option value="yeshivish">Yeshivish</option>
                 <option value="modern">Modern</option>
                 <option value="custom">Custom</option>
               </select>
@@ -262,17 +317,34 @@ export default function OnboardingPage() {
             <div>
               <label className="block text-sm font-semibold text-neutral-dark-grey mb-2 flex items-center gap-2">
                 <Ruler className="w-5 h-5 text-primary-purple" />
-                Height (cm)
+                Height
               </label>
-              <input
-                type="number"
-                value={height || ''}
-                onChange={(e) => setHeight(parseInt(e.target.value) || undefined)}
-                min="100"
-                max="250"
-                className="w-full px-4 py-3 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all"
-                placeholder="e.g. 175"
-              />
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs text-neutral-medium-grey mb-1">Feet</label>
+                  <input
+                    type="number"
+                    value={heightFeet || ''}
+                    onChange={(e) => setHeightFeet(parseInt(e.target.value) || undefined)}
+                    min="3"
+                    max="8"
+                    className="w-full px-4 py-3 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all"
+                    placeholder="5"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-neutral-medium-grey mb-1">Inches</label>
+                  <input
+                    type="number"
+                    value={heightInches || ''}
+                    onChange={(e) => setHeightInches(parseInt(e.target.value) || undefined)}
+                    min="0"
+                    max="11"
+                    className="w-full px-4 py-3 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all"
+                    placeholder="10"
+                  />
+                </div>
+              </div>
             </div>
             <div className="flex gap-4">
               <button

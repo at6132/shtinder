@@ -56,23 +56,43 @@ export default function ProfilePage() {
 
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
-  const [height, setHeight] = useState('')
+  const [heightFeet, setHeightFeet] = useState<number | undefined>()
+  const [heightInches, setHeightInches] = useState<number | undefined>()
   const [isEditing, setIsEditing] = useState(false)
   const [uploading, setUploading] = useState(false)
+
+  // Helper function to convert feet and inches to centimeters
+  const convertToCm = (feet: number | undefined, inches: number | undefined): number | undefined => {
+    if (feet === undefined && inches === undefined) return undefined
+    const totalInches = (feet || 0) * 12 + (inches || 0)
+    return Math.round(totalInches * 2.54)
+  }
+
+  // Helper function to convert centimeters to feet and inches
+  const convertFromCm = (cm: number | undefined): { feet: number | undefined; inches: number | undefined } => {
+    if (!cm) return { feet: undefined, inches: undefined }
+    const totalInches = Math.round(cm / 2.54)
+    const feet = Math.floor(totalInches / 12)
+    const inches = totalInches % 12
+    return { feet, inches }
+  }
 
   useEffect(() => {
     if (profile) {
       setName(profile.name || '')
       setBio(profile.bio || '')
-      setHeight(profile.height?.toString() || '')
+      const { feet, inches } = convertFromCm(profile.height)
+      setHeightFeet(feet)
+      setHeightInches(inches)
     }
   }, [profile])
 
   const handleSave = () => {
+    const heightCm = convertToCm(heightFeet, heightInches)
     updateMutation.mutate({
       name,
       bio,
-      height: height ? parseInt(height) : undefined,
+      height: heightCm,
     })
     setIsEditing(false)
   }
@@ -303,21 +323,40 @@ export default function ProfilePage() {
           <div>
             <label className="block text-sm font-semibold text-neutral-dark-grey mb-2 flex items-center gap-2">
               <Ruler className="w-5 h-5 text-primary-purple" />
-              Height (cm)
+              Height
             </label>
             {isEditing ? (
-              <input
-                type="number"
-                value={height}
-                onChange={(e) => setHeight(e.target.value)}
-                min="100"
-                max="250"
-                className="w-full px-4 py-3 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all"
-                placeholder="e.g. 175"
-              />
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs text-neutral-medium-grey mb-1">Feet</label>
+                  <input
+                    type="number"
+                    value={heightFeet || ''}
+                    onChange={(e) => setHeightFeet(parseInt(e.target.value) || undefined)}
+                    min="3"
+                    max="8"
+                    className="w-full px-4 py-3 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all"
+                    placeholder="5"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-neutral-medium-grey mb-1">Inches</label>
+                  <input
+                    type="number"
+                    value={heightInches || ''}
+                    onChange={(e) => setHeightInches(parseInt(e.target.value) || undefined)}
+                    min="0"
+                    max="11"
+                    className="w-full px-4 py-3 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-light-grey transition-all"
+                    placeholder="10"
+                  />
+                </div>
+              </div>
             ) : (
               <div className="px-4 py-3 bg-neutral-light-grey rounded-xl text-neutral-near-black">
-                {height ? `${height} cm` : 'Not set'}
+                {heightFeet !== undefined && heightInches !== undefined
+                  ? `${heightFeet}'${heightInches}"`
+                  : 'Not set'}
               </div>
             )}
           </div>
@@ -333,7 +372,9 @@ export default function ProfilePage() {
                     if (profile) {
                       setName(profile.name || '')
                       setBio(profile.bio || '')
-                      setHeight(profile.height?.toString() || '')
+                      const { feet, inches } = convertFromCm(profile.height)
+                      setHeightFeet(feet)
+                      setHeightInches(inches)
                     }
                   }}
                   className="flex-1 bg-neutral-light-grey text-neutral-dark-grey py-3 rounded-xl font-semibold hover:bg-neutral-medium-grey transition-all"

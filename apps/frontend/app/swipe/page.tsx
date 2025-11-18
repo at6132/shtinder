@@ -6,7 +6,8 @@ import { api } from '@/lib/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { X, Sparkles, Heart } from 'lucide-react'
+import { useAuthStore } from '@/store/auth-store'
+import { X, Sparkles, Heart, RotateCcw } from 'lucide-react'
 
 interface User {
   id: string
@@ -19,6 +20,14 @@ interface User {
 export default function SwipePage() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
+
+  // Redirect to onboarding if not completed
+  useEffect(() => {
+    if (user && !user.onboardingComplete) {
+      router.push('/onboarding')
+    }
+  }, [user, router])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [users, setUsers] = useState<User[]>([])
   const [exitX, setExitX] = useState(0)
@@ -26,22 +35,29 @@ export default function SwipePage() {
   const [dragX, setDragX] = useState(0)
   const [showTooltip, setShowTooltip] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [lastSwipedUser, setLastSwipedUser] = useState<{ user: User; index: number } | null>(null)
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, error } = useQuery({
     queryKey: ['discover', page],
     queryFn: async () => {
       const res = await api.get(`/users/discover?limit=50&page=${page}`)
+      console.log('📊 Discover response:', res.data?.length || 0, 'users')
       return res.data
     },
+    enabled: !!user && user.onboardingComplete === true,
   })
 
   useEffect(() => {
-    if (data && data.length > 0) {
+    if (data) {
       // Append new users instead of replacing (for unlimited swiping)
       setUsers((prev) => {
         if (prev.length === 0) {
-          // First load - just set the data
+          // First load - just set the data (even if empty array)
           return data
+        }
+        if (data.length === 0) {
+          // No new users, keep existing
+          return prev
         }
         const existingIds = new Set(prev.map((u: User) => u.id))
         const newUsers = data.filter((u: User) => !existingIds.has(u.id))
@@ -61,6 +77,12 @@ export default function SwipePage() {
       return api.post(`/swipes/${direction}`, { targetId })
     },
     onSuccess: (response, variables) => {
+      // Store the last swiped user for undo functionality
+      const swipedUser = users[currentIndex]
+      if (swipedUser) {
+        setLastSwipedUser({ user: swipedUser, index: currentIndex })
+      }
+
       if (response.data.isMatch) {
         // Show match animation
         alert(`It's a match with ${users[currentIndex]?.name}!`)
@@ -75,6 +97,33 @@ export default function SwipePage() {
     },
   })
 
+  const undoMutation = useMutation({
+    mutationFn: async (targetId: string) => {
+      return api.delete(`/swipes/undo/${targetId}`)
+    },
+    onSuccess: () => {
+      // Restore the last swiped user back to the feed
+      if (lastSwipedUser) {
+        setUsers((prev) => {
+          const newUsers = [...prev]
+          // Insert the user back at their original position
+          newUsers.splice(lastSwipedUser.index, 0, lastSwipedUser.user)
+          return newUsers
+        })
+        // Go back to that user
+        setCurrentIndex(lastSwipedUser.index)
+        setLastSwipedUser(null)
+        queryClient.invalidateQueries({ queryKey: ['discover'] })
+      }
+    },
+  })
+
+  const handleUndo = () => {
+    if (lastSwipedUser && currentIndex > 0) {
+      undoMutation.mutate(lastSwipedUser.user.id)
+    }
+  }
+
   const handleSwipe = (direction: 'like' | 'dislike' | 'superlike') => {
     if (currentIndex >= users.length) return
 
@@ -87,8 +136,8 @@ export default function SwipePage() {
   }
 
   const handleDragEnd = (event: any, info: any) => {
-    // Lower threshold for mobile
-    const threshold = window.innerWidth < 768 ? 50 : 100
+    // Higher threshold to make swiping less sensitive
+    const threshold = window.innerWidth < 768 ? 150 : 200
     if (Math.abs(info.offset.x) > threshold) {
       setExitX(info.offset.x > 0 ? 1000 : -1000)
       if (info.offset.x > 0) {
@@ -96,9 +145,10 @@ export default function SwipePage() {
       } else {
         handleSwipe('dislike')
       }
+    } else {
+      // If not enough movement, snap back to center
+      setDragX(0)
     }
-    // Reset drag position
-    setDragX(0)
   }
 
   if (isLoading) {
@@ -109,7 +159,26 @@ export default function SwipePage() {
     )
   }
 
-  if (currentIndex >= users.length) {
+  // Show error if query failed
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-soft-love-gradient pt-16 pb-20 md:pt-0 md:pb-0">
+        <div className="text-center text-neutral-near-black px-4">
+          <h1 className="text-2xl md:text-3xl font-bold mb-4">Error loading users</h1>
+          <p className="text-lg mb-8 opacity-90">Please try refreshing the page</p>
+          <button
+            onClick={() => refetch()}
+            className="bg-primary-purple text-white px-6 py-3 rounded-xl font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Only show "no more users" if we've loaded data and it's empty
+  if (!isLoading && users.length === 0 && data !== undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-flame-gradient pt-16 pb-20 md:pt-0 md:pb-0">
         <div className="text-center text-white px-4">
@@ -137,19 +206,19 @@ export default function SwipePage() {
         <div className="flex-1 flex items-center justify-center relative min-h-0">
           <AnimatePresence>
             {currentUser && (
-              <motion.div
-                key={currentIndex}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
-                onDrag={handleDrag}
-                onDragEnd={handleDragEnd}
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1, x: dragX }}
-                exit={{ x: exitX, opacity: 0, scale: 0.5 }}
-                className="absolute w-full max-w-sm swipe-card"
-                style={{ rotate: dragX * 0.1 }}
-              >
+                  <motion.div
+                    key={currentIndex}
+                    drag="x"
+                    dragConstraints={{ left: -300, right: 300 }}
+                    dragElastic={0.1}
+                    onDrag={handleDrag}
+                    onDragEnd={handleDragEnd}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1, x: dragX }}
+                    exit={{ x: exitX, opacity: 0, scale: 0.5 }}
+                    className="absolute w-full max-w-sm swipe-card"
+                    style={{ rotate: dragX * 0.05 }}
+                  >
                 <div className="bg-neutral-white rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden relative">
                   {/* Swipe Animation Overlays */}
                   {Math.abs(dragX) > 20 && (
@@ -260,6 +329,18 @@ export default function SwipePage() {
         </div>
 
         <div className="flex justify-center gap-4 md:gap-6 pb-2 md:pb-8 relative">
+          {/* Undo/Back Button - positioned to the left of the action buttons */}
+          {lastSwipedUser && currentIndex > 0 && (
+            <button
+              onClick={handleUndo}
+              disabled={undoMutation.isPending}
+              className="absolute left-0 md:left-4 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-neutral-white shadow-xl flex items-center justify-center active:scale-95 md:hover:scale-110 hover:shadow-2xl transition-all touch-manipulation disabled:opacity-50 z-10"
+              aria-label="Undo last swipe"
+            >
+              <RotateCcw className="w-6 h-6 md:w-7 md:h-7 text-primary-purple" />
+            </button>
+          )}
+
           {/* Dislike Button */}
           <div className="relative">
             <button

@@ -6,7 +6,7 @@ import { SwipeDto } from './dto/swipe.dto';
 export class SwipesService {
   constructor(private prisma: PrismaService) {}
 
-  async swipe(userId: string, dto: SwipeDto) {
+  async swipe(userId: string, dto: SwipeDto & { direction: 'like' | 'dislike' | 'superlike' }) {
     // Check if user is trying to swipe on themselves
     if (userId === dto.targetId) {
       throw new BadRequestException('Cannot swipe on yourself');
@@ -131,6 +131,63 @@ export class SwipesService {
       match: null,
       isMatch: false,
     };
+  }
+
+  async undoSwipe(userId: string, targetId: string) {
+    // Find and delete the swipe
+    const swipe = await this.prisma.swipe.findUnique({
+      where: {
+        swiperId_targetId: {
+          swiperId: userId,
+          targetId: targetId,
+        },
+      },
+    });
+
+    if (!swipe) {
+      throw new NotFoundException('Swipe not found');
+    }
+
+    // Delete the swipe
+    await this.prisma.swipe.delete({
+      where: {
+        swiperId_targetId: {
+          swiperId: userId,
+          targetId: targetId,
+        },
+      },
+    });
+
+    // If there was a match, check if we need to delete it
+    // Only delete match if it was created by this swipe (both users liked each other)
+    const match = await this.prisma.match.findFirst({
+      where: {
+        OR: [
+          { user1Id: userId, user2Id: targetId },
+          { user1Id: targetId, user2Id: userId },
+        ],
+      },
+    });
+
+    if (match) {
+      // Check if the reverse swipe still exists
+      const reverseSwipe = await this.prisma.swipe.findUnique({
+        where: {
+          swiperId_targetId: {
+            swiperId: targetId,
+            targetId: userId,
+          },
+        },
+      });
+
+      // Only delete match if the reverse swipe is also a like/superlike
+      // If the other user unliked, we should keep the match
+      // Actually, let's be safe and only delete if both swipes are gone
+      // For now, we'll leave matches intact when undoing a swipe
+      // This is safer and matches typical dating app behavior
+    }
+
+    return { success: true, message: 'Swipe undone' };
   }
 }
 

@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Mail, Lock, User, Calendar, VenusMars } from 'lucide-react'
+import { Mail, Lock, User, Calendar, Users } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -143,7 +143,7 @@ export default function RegisterPage() {
                 Gender
               </label>
               <div className="relative">
-                <VenusMars className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-medium-grey z-10" />
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-medium-grey z-10" />
                 <select
                   {...register('gender')}
                   className="w-full pl-11 pr-4 py-3 border border-neutral-light-grey rounded-xl focus:ring-2 focus:ring-primary-purple focus:border-primary-purple text-neutral-near-black bg-neutral-off-white transition-all appearance-none"

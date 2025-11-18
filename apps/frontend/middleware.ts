@@ -3,10 +3,11 @@ import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   // This is a placeholder - actual auth check happens in components
+  // Onboarding redirect is handled client-side in components
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/swipe', '/matches', '/chat/:path*', '/profile', '/settings'],
+  matcher: ['/swipe', '/matches', '/chat/:path*', '/profile', '/settings', '/dms'],
 }
 
