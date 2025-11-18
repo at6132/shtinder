@@ -40,16 +40,39 @@ api.interceptors.response.use(
             refreshToken,
           })
 
-          const { accessToken } = response.data
+          const { accessToken, refreshToken: newRefreshToken } = response.data
           localStorage.setItem('accessToken', accessToken)
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken)
+          }
+
+          // Update auth store if available
+          if (typeof window !== 'undefined') {
+            const { useAuthStore } = await import('@/store/auth-store')
+            const store = useAuthStore.getState()
+            if (store.user) {
+              store.setAuth(store.user, accessToken, newRefreshToken || refreshToken)
+            }
+          }
 
           originalRequest.headers.Authorization = `Bearer ${accessToken}`
           return api(originalRequest)
         }
       } catch (refreshError) {
+        // Clear tokens and redirect to login
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
-        window.location.href = '/auth/login'
+        
+        // Update auth store
+        if (typeof window !== 'undefined') {
+          const { useAuthStore } = await import('@/store/auth-store')
+          useAuthStore.getState().logout()
+        }
+        
+        // Only redirect if we're not already on login page
+        if (window.location.pathname !== '/auth/login') {
+          window.location.href = '/auth/login'
+        }
       }
     }
 
