@@ -25,7 +25,13 @@ This guide will help you deploy SHTINDER to Railway with 3 services:
    - **Root Directory:** Set to `apps/backend`
    - Railway will auto-detect the `railway.json` config
 
-3. **Add Environment Variables:**
+3. **IMPORTANT: Set Root Directory FIRST:**
+   - Go to **Settings** → **Root Directory**
+   - Set to: `apps/backend`
+   - **Save this BEFORE adding environment variables**
+   - This ensures Railway runs commands from the correct directory
+
+4. **Add Environment Variables:**
    ```
    DATABASE_URL=<paste-from-postgres-service>
    JWT_SECRET=<generate-strong-random-string>
@@ -48,13 +54,22 @@ This guide will help you deploy SHTINDER to Railway with 3 services:
    # Run twice to get JWT_SECRET and JWT_REFRESH_SECRET
    ```
 
-5. **Run Database Migrations:**
-   - After the first deployment, go to the backend service
+5. **Troubleshooting Build Issues:**
+   - If you see `EBUSY: resource busy or locked` error:
+     - Go to **Settings** → **Clear Build Cache**
+     - Redeploy
+   - If you see `Cannot find module '/app/dist/main'`:
+     - Verify **Root Directory** is set to `apps/backend`
+     - Check build logs to ensure `npm run build` completed successfully
+   - If build fails, check logs for TypeScript or dependency errors
+
+6. **Run Database Migrations:**
+   - After the first successful deployment, go to the backend service
    - Click **"Deployments"** → **"..."** → **"Run Command"**
    - Run: `npx prisma migrate deploy`
    - Or use Railway CLI: `railway run npx prisma migrate deploy`
 
-6. **Get Backend URL:**
+7. **Get Backend URL:**
    - After deployment, Railway will provide a public URL
    - Example: `https://your-backend-production.up.railway.app`
    - **Copy this URL** - you'll need it for the frontend
